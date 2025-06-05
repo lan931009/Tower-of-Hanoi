@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>河內塔遊戲</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+
+    h1 {
+      font-size: 2rem;
+    }
+
+    .controls {
+      margin: 20px;
+    }
+
+    select, button {
+      font-size: 1rem;
+      padding: 5px 10px;
+      margin: 0 10px;
+    }
+
+    .stats {
+      margin-top: 10px;
+    }
+
+    .game {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      margin-top: 30px;
+    }
+
+    .tower {
+      width: 120px;
+      height: 300px;
+      border: 2px solid #333;
+      position: relative;
+      display: flex;
+      flex-direction: column-reverse;
+      align-items: center;
+    }
+
+    .pole {
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      width: 10px;
+      height: 100%;
+      background: #555;
+      transform: translateX(-50%);
+      z-index: 0;
+    }
+
+    .disk {
+      height: 20px;
+      margin-bottom: 6px;
+      background-color: coral;
+      border-radius: 5px;
+      cursor: grab;
+      position: relative;
+      z-index: 1;
+    }
+
+    .completed {
+      animation: flash 1s ease-in-out 3;
+    }
+
+    @keyframes flash {
+      0%, 100% { background-color: coral; }
+      50% { background-color: gold; }
+    }
+  </style>
+</head>
+<body>
+
+<h1>河內塔</h1>
+<div class="controls">
+  <label>選擇圓盤數：</label>
+  <select id="diskCount">
+    <option value="3">3</option>
+    <option value="4">4</option>
+    <option value="5">5</option>
+    <option value="6">6</option>
+    <option value="7">7</option>
+    <option value="8">8</option>
+    <option value="9">9</option>
+  </select>
+  <button id="startBtn">開始遊戲</button>
+</div>
+
+<div class="stats">
+  <div>移動次數：<span id="moveCount">0</span></div>
+  <div>時間：<span id="timer">00:00</span></div>
+</div>
+
+<div class="game">
+  <div id="tower1" class="tower"><div class="pole"></div></div>
+  <div id="tower2" class="tower"><div class="pole"></div></div>
+  <div id="tower3" class="tower"><div class="pole"></div></div>
+</div>
+
+<script>
+  const towers = [...document.querySelectorAll('.tower')];
+  let moveCount = 0;
+  let startTime;
+  let timerInterval;
+  let totalDisks = 3;
+  let draggedDisk = null;
+
+  function createDisk(size) {
+    const disk = document.createElement('div');
+    disk.className = 'disk';
+    disk.dataset.size = size;
+    disk.style.width = `${40 + size * 15}px`;
+    disk.setAttribute('draggable', true);
+    return disk;
+  }
+
+  function resetGame() {
+    towers.forEach(t => t.querySelectorAll('.disk').forEach(d => d.remove()));
+    const firstTower = document.getElementById('tower1');
+    for (let i = totalDisks; i >= 1; i--) {
+      firstTower.appendChild(createDisk(i));
+    }
+    moveCount = 0;
+    document.getElementById('moveCount').textContent = '0';
+    clearInterval(timerInterval);
+    document.getElementById('timer').textContent = '00:00';
+    startTime = new Date();
+    timerInterval = setInterval(updateTimer, 1000);
+  }
+
+  function updateTimer() {
+    const now = new Date();
+    const diff = Math.floor((now - startTime) / 1000);
+    const min = String(Math.floor(diff / 60)).padStart(2, '0');
+    const sec = String(diff % 60).padStart(2, '0');
+    document.getElementById('timer').textContent = `${min}:${sec}`;
+  }
+
+  function checkWin() {
+    const lastTower = document.getElementById('tower3');
+    const disks = lastTower.querySelectorAll('.disk');
+    if (disks.length === totalDisks) {
+      clearInterval(timerInterval);
+      disks.forEach(d => d.classList.add('completed'));
+      alert(`完成了！總共移動 ${moveCount} 步，耗時 ${document.getElementById('timer').textContent}`);
+    }
+  }
+
+  document.getElementById('startBtn').addEventListener('click', () => {
+    totalDisks = parseInt(document.getElementById('diskCount').value);
+    resetGame();
+  });
+
+  document.addEventListener('dragstart', e => {
+    if (e.target.classList.contains('disk')) {
+      const parent = e.target.parentElement;
+      if (parent.lastElementChild !== e.target) {
+        e.preventDefault();
+        return;
+      }
+      draggedDisk = e.target;
+    }
+  });
+
+  document.addEventListener('dragover', e => {
+    if (e.target.classList.contains('tower')) {
+      e.preventDefault();
+    }
+  });
+
+  document.addEventListener('drop', e => {
+    if (e.target.classList.contains('tower') && draggedDisk) {
+      const tower = e.target;
+      const topDisk = [...tower.children].filter(c => c.classList.contains('disk')).at(-1);
+      const fromSize = parseInt(draggedDisk.dataset.size);
+      const toSize = topDisk ? parseInt(topDisk.dataset.size) : Infinity;
+
+      if (fromSize < toSize) {
+        tower.appendChild(draggedDisk);
+        moveCount++;
+        document.getElementById('moveCount').textContent = moveCount;
+        checkWin();
+      } else {
+        alert("不能放在比自己小的盤子上！");
+      }
+      draggedDisk = null;
+    }
+  });
+</script>
+</body>
+</html>
